@@ -57,3 +57,6 @@ MIT
     primaryClass={cs.CV}
 }
 ```
+
+# Todo
+- [ ] Implement the nn.ModuleList([]) in the encoder and decoder
