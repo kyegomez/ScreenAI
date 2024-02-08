@@ -139,6 +139,19 @@ class EmbedToLatents(nn.Module):
 
 
 class CrossAttention(nn.Module):
+    """
+    Initializes the ScreenAI model.
+
+    Args:
+    dim (int): The input dimension.
+    context_dim (int, optional): The dimension of the context. Defaults to None.
+    dim_head (int, optional): The dimension of each head. Defaults to 64.
+    heads (int, optional): The number of attention heads. Defaults to 8.
+    parallel_ff (bool, optional): Whether to use parallel feedforward. Defaults to False.
+    ff_mult (int, optional): The multiplier for the feedforward inner dimension. Defaults to 4.
+    norm_context (bool, optional): Whether to apply layer normalization to the context. Defaults to False.
+    """
+
     def __init__(
         self,
         dim,
@@ -150,18 +163,6 @@ class CrossAttention(nn.Module):
         ff_mult=4,
         norm_context=False,
     ):
-        """
-        Initializes the ScreenAI model.
-
-        Args:
-            dim (int): The input dimension.
-            context_dim (int, optional): The dimension of the context. Defaults to None.
-            dim_head (int, optional): The dimension of each head. Defaults to 64.
-            heads (int, optional): The number of attention heads. Defaults to 8.
-            parallel_ff (bool, optional): Whether to use parallel feedforward. Defaults to False.
-            ff_mult (int, optional): The multiplier for the feedforward inner dimension. Defaults to 4.
-            norm_context (bool, optional): Whether to apply layer normalization to the context. Defaults to False.
-        """
         super().__init__()
         self.heads = heads
         self.scale = dim_head**-0.5
@@ -275,7 +276,6 @@ class MultiModalEncoder(nn.Module):
         *args,
         **kwargs,
     ):
-        # super(self, MultiModalEncoder).__init__(*args, **kwargs)
         super().__init__()
         self.dim = dim
         self.depth = depth
@@ -343,7 +343,6 @@ class MultiModalDecoder(nn.Module):
         *args,
         **kwargs,
     ):
-        # super(self, MultiModalDecoder).__init__(*args, **kwargs)
         super().__init__()
         self.dim = dim
         self.depth = depth
@@ -421,7 +420,6 @@ class ScreenAI(nn.Module):
         vit_depth: int = 4,
         multi_modal_encoder_depth: int = 4,
         llm_decoder_depth: int = 4,
-        mm_encoder_ff_mult: int = 4,
         channels: int = 3,
         *args,
         **kwargs,
@@ -476,19 +474,6 @@ class ScreenAI(nn.Module):
             dim_head,
             heads,
         )
-
-        # Patch embedding
-        # self.to_patch_embedding = nn.Sequential(
-        #     Rearrange(
-        #         "b c (h p1) (w p2) -> b (h w) (p1 p2 c)",
-        #         p1=patch_height,
-        #         p2=patch_width,
-        #     ),
-        #     nn.LayerNorm(patch_dim),
-        #     nn.Linear(patch_dim, dim),
-        #     nn.LayerNorm(dim),
-        # )
-        # Patch embedding for 3d image tensor,
         self.to_patch_embedding = nn.Sequential(
             nn.LayerNorm(dim),
             nn.Linear(dim, dim),
@@ -506,15 +491,6 @@ class ScreenAI(nn.Module):
         Returns:
             Tensor: Output tensor.
         """
-        # Image patch
-        # img = rearrange(
-        #     img,
-        #     "b c (h p1) (w p2) -> b (h w) (p1 p2 c)",
-        #     p1=self.patch_size,
-        #     p2=self.patch_size,
-        # )
-        # print(f"Image patch shape: {img.shape}")
-
         # Aspect ratio preserving grid with max e.g 25 patches, output needs to be 4
         x = rearrange(
             img,
