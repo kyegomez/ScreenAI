@@ -437,10 +437,7 @@ class ScreenAI(nn.Module):
         self.vit_depth = vit_depth
         self.multi_modal_encoder_depth = multi_modal_encoder_depth
         self.llm_decoder_depth = llm_decoder_depth
-
-        patch_height, patch_width = pair(patch_size)
-        channels * patch_height * patch_width
-
+        
         # ViTransformerWrapper
         self.vit = ViTransformerWrapper(
             image_size=image_size,
