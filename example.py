@@ -1,11 +1,13 @@
 import torch
 from screenai.main import ScreenAI
 
-# Create a tensor
+# Create a tensor for the image
 image = torch.rand(1, 3, 224, 224)
+
+# Create a tensor for the text
 text = torch.randn(1, 1, 512)
 
-# Model
+# Create an instance of the ScreenAI model with specified parameters
 model = ScreenAI(
     patch_size=16,
     image_size=224,
@@ -18,9 +20,8 @@ model = ScreenAI(
     mm_encoder_ff_mult=4,
 )
 
-
-# Forward
+# Perform forward pass of the model with the given text and image tensors
 out = model(text, image)
 
-# Print the output shape
-print(out.shape)
+# Print the shape of the output tensor
+print(out)
