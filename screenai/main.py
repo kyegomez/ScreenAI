@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
@@ -211,7 +209,7 @@ class CrossAttention(nn.Module):
 class ScreenAI(nn.Module):
     def __init__(
         self,
-        patch_size: Tuple[int, int] = (16, 16),
+        patch_size: int,  # Tuple[int, int] = (16, 16),
         image_size: int = 224,
         dim: int = 512,
         depth: int = 6,
@@ -232,12 +230,6 @@ class ScreenAI(nn.Module):
         self.vit_depth = vit_depth
         self.multi_modal_encoder_depth = multi_modal_encoder_depth
         self.llm_decoder_depth = llm_decoder_depth
-
-        # Aspect ratio preserving gride with max 25 patches, split up the image into patches
-        self.grid = (
-            image_size // patch_size[0],
-            image_size // patch_size[1],
-        )
 
         # Patch embedding
         self.patch_embedding = nn.Conv2d(
@@ -285,7 +277,7 @@ class ScreenAI(nn.Module):
             for _ in range(llm_decoder_depth)
         )
 
-    def forward(self, img: Tensor, text: Tensor) -> Tensor:
+    def forward(self, text: Tensor, img: Tensor) -> Tensor:
         # Image patch
         img = rearrange(
             img,
@@ -293,6 +285,7 @@ class ScreenAI(nn.Module):
             p1=self.patch_size[0],
             p2=self.patch_size[1],
         )
+        print(f"Image patch shape: {img.shape}")
 
         # vit
         img = self.vit(img, return_embeddings=True)
@@ -306,8 +299,8 @@ class ScreenAI(nn.Module):
 
         # T5 Multimodal encoder
         for attn, ff in self.mme_layers:
-            x, _, _ = attn(x, x, x)
-            x = ff(x)
+            x, _, _ = attn(x, x, x) + x
+            x = ff(x) + x
 
         # Pass the k, v values into the cross attention of llm
         for cross_attn, attn in self.llm_layers:
