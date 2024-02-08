@@ -1,3 +1,4 @@
 torch
 zetascale
-swarms
+einops
+torch 
