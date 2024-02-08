@@ -13,7 +13,6 @@ from zeta.structs import (
     Encoder,
     ViTransformerWrapper,
 )
-from einops.layers.torch import Rearrange
 
 # helper functions
 
@@ -439,7 +438,7 @@ class ScreenAI(nn.Module):
 
         image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
-        patch_dim = channels * patch_height * patch_width
+        channels * patch_height * patch_width
 
         # ViTransformerWrapper
         self.vit = ViTransformerWrapper(
