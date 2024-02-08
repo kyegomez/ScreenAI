@@ -1,3 +1,14 @@
-from screenai.main import CrossAttention, ScreenAI
+from screenai.main import (
+    CrossAttention,
+    MultiModalEncoder,
+    MultiModalDecoder,
+    ScreenAI,
+)
 
-__all__ = ["CrossAttention", "ScreenAI"]
+
+__all__ = [
+    "CrossAttention",
+    "MultiModalEncoder",
+    "MultiModalDecoder",
+    "ScreenAI",
+]

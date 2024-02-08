@@ -276,7 +276,7 @@ class MultiModalEncoder(nn.Module):
 
         """
         skip = x
-        x, _ = self.attn(x) 
+        x, _ = self.attn(x)
         x = x + skip
         x = self.ffn(x) + x
 
