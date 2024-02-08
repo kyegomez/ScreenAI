@@ -1,7 +1,8 @@
 [![Multi-Modality](agorabanner.png)](https://discord.gg/qUtxnK2NMf)
 
 # Screen AI
-Implementation of the ScreenAI model from the paper: "A Vision-Language Model for UI and Infographics Understanding"
+Implementation of the ScreenAI model from the paper: "A Vision-Language Model for UI and Infographics Understanding". The flow is:
+img + text -> patch sizes -> vit -> embed + concat -> attn + ffn -> cross attn + ffn + self attn -> to out. [PAPER LINK: ](https://arxiv.org/abs/2402.04615)
 
 ## Install
 `pip3 install screenai`
@@ -41,3 +42,17 @@ print(out.shape)
 
 # License
 MIT
+
+
+## Citation
+```bibtex
+
+@misc{baechler2024screenai,
+    title={ScreenAI: A Vision-Language Model for UI and Infographics Understanding}, 
+    author={Gilles Baechler and Srinivas Sunkara and Maria Wang and Fedir Zubach and Hassan Mansoor and Vincent Etter and Victor Cărbune and Jason Lin and Jindong Chen and Abhanshu Sharma},
+    year={2024},
+    eprint={2402.04615},
+    archivePrefix={arXiv},
+    primaryClass={cs.CV}
+}
+```
