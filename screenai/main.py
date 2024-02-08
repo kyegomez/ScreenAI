@@ -411,6 +411,8 @@ class ScreenAI(nn.Module):
 
     def __init__(
         self,
+        num_tokens: int,
+        max_seq_len: int,
         patch_size: int,
         image_size: int = 224,
         dim: int = 512,
@@ -425,6 +427,8 @@ class ScreenAI(nn.Module):
         **kwargs,
     ):
         super().__init__()
+        self.num_tokens = num_tokens
+        self.max_seq_len = max_seq_len
         self.patch_size = patch_size
         self.image_size = image_size
         self.dim = dim
@@ -434,7 +438,6 @@ class ScreenAI(nn.Module):
         self.multi_modal_encoder_depth = multi_modal_encoder_depth
         self.llm_decoder_depth = llm_decoder_depth
 
-        image_height, image_width = pair(image_size)
         patch_height, patch_width = pair(patch_size)
         channels * patch_height * patch_width
 
@@ -479,6 +482,10 @@ class ScreenAI(nn.Module):
             nn.Linear(dim, dim),
             nn.LayerNorm(dim),
         )
+        
+        
+        # Embedding for the tokens
+        self.embedding = nn.Embedding(num_tokens, dim)
 
     def forward(self, text: Tensor, img: Tensor) -> Tensor:
         """
@@ -491,6 +498,7 @@ class ScreenAI(nn.Module):
         Returns:
             Tensor: Output tensor.
         """
+        text = self.embedding(text)
         # Aspect ratio preserving grid with max e.g 25 patches, output needs to be 4
         x = rearrange(
             img,

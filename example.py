@@ -5,10 +5,12 @@ from screenai.main import ScreenAI
 image = torch.rand(1, 3, 224, 224)
 
 # Create a tensor for the text
-text = torch.randn(1, 1, 512)
+text = torch.randint(0, 20000, (1, 1028))
 
 # Create an instance of the ScreenAI model with specified parameters
 model = ScreenAI(
+    num_tokens = 20000,
+    max_seq_len = 1028,
     patch_size=16,
     image_size=224,
     dim=512,
