@@ -1,10 +1,15 @@
+
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
 from einops import rearrange
 from torch import Tensor, einsum, nn
 from torch.autograd import Function
-from zeta.nn import SwiGLU, MultiQueryAttention, FeedForward
+from zeta.nn import (
+    SwiGLU,
+    FeedForward,
+    Attention,
+)
 from zeta.structs import (
     Encoder,
     ViTransformerWrapper,
@@ -206,13 +211,184 @@ class CrossAttention(nn.Module):
         return out
 
 
-class ScreenAI(nn.Module):
+class MultiModalEncoder(nn.Module):
+    """
+    MultiModalEncoder class is responsible for encoding multi-modal inputs using self-attention mechanism.
+
+    Args:
+        dim (int): The dimension of the input and output tensors. Default is 512.
+        depth (int): The number of layers in the encoder. Default is 6.
+        dim_head (int): The dimension of each head in the self-attention mechanism. Default is 64.
+        heads (int): The number of attention heads. Default is 8.
+        *args: Variable length argument list.
+        **kwargs: Arbitrary keyword arguments.
+
+    Attributes:
+        dim (int): The dimension of the input and output tensors.
+        depth (int): The number of layers in the encoder.
+        heads (int): The number of attention heads.
+        dim_head (int): The dimension of each head in the self-attention mechanism.
+        layers (list): List of attention and feedforward layers.
+
+    """
+
     def __init__(
         self,
-        patch_size: int,  # Tuple[int, int] = (16, 16),
+        dim: int = 512,
+        depth: int = 6,
+        dim_head: int = 64,
+        heads: int = 8,
+        *args,
+        **kwargs,
+    ):
+        super().__init__()
+        self.dim = dim
+        self.depth = depth
+        self.heads = heads
+        self.dim_head = dim_head
+        # self.layers = nn.ModuleList([])
+
+        # for _ in range(depth):
+        #     attention_layer = Attention(dim, dim_head, heads, causal=True, qk_norm=True, flash="cuda")
+        #     feedforward_layer = FeedForward(dim, dim, 4, *args, **kwargs)
+
+        #     self.layers.append(attention_layer)
+        #     self.layers.append(feedforward_layer)
+
+        self.layers = nn.ModuleList(
+            [Attention(dim, dim_head, heads, causal=True, qk_norm=True, flash="cuda"),
+            FeedForward(dim, dim, 4, *args, **kwargs)]
+            for _ in range(depth)
+        )
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Forward pass of the MultiModalEncoder.
+
+        Args:
+            x (Tensor): The input tensor.
+
+        Returns:
+            Tensor: The encoded tensor.
+
+        """
+        for attn, ff in self.layers:
+            x = attn(x) + x
+            x = ff(x) + x
+
+        return x
+
+
+class MultiModalDecoder(nn.Module):
+    """
+    MultiModalDecoder module for decoding multi-modal inputs.
+
+    Args:
+        dim (int): The dimension of the input.
+        depth (int): The number of layers in the decoder.
+        dim_head (int): The dimension of each attention head.
+        heads (int): The number of attention heads.
+        *args: Variable length argument list.
+        **kwargs: Arbitrary keyword arguments.
+
+    Attributes:
+        dim (int): The dimension of the input.
+        depth (int): The number of layers in the decoder.
+        heads (int): The number of attention heads.
+        dim_head (int): The dimension of each attention head.
+        layers (nn.ModuleList): List of decoder layers.
+
+    """
+
+    def __init__(
+        self,
+        dim: int = 512,
+        depth: int = 6,
+        dim_head: int = 64,
+        heads: int = 8,
+        *args,
+        **kwargs,
+    ):
+        # super(self, MultiModalDecoder).__init__(*args, **kwargs)
+        super().__init__()
+        self.dim = dim
+        self.depth = depth
+        self.heads = heads
+        self.dim_head = dim_head
+
+        self.layers = nn.ModuleList(
+            [
+                (
+                    CrossAttention(
+                        dim,
+                        context_dim=dim,
+                        heads=heads,
+                        *args,
+                        **kwargs,
+                    ),
+                    Attention(
+                        dim,
+                        dim_head,
+                        heads,
+                        causal=True,
+                        qk_norm=True,
+                        flash="cuda",
+                    ),
+                )
+                for _ in range(depth)
+            ]
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        for cross_attn, attn in self.layers:
+            x = cross_attn(x, x) + x
+            x = attn(x) + x
+
+        return x
+
+
+class ScreenAI(nn.Module):
+    """
+    ScreenAI module for multimodal learning.
+
+    Args:
+        patch_size (int): Size of the image patches.
+        image_size (int): Size of the input image.
+        dim (int): Dimension of the model.
+        depth (int): Depth of the model.
+        dim_head (int): Dimension of the attention head.
+        heads (int): Number of attention heads.
+        vit_depth (int): Depth of the ViT transformer.
+        multi_modal_encoder_depth (int): Depth of the multimodal encoder.
+        llm_decoder_depth (int): Depth of the LLM decoder.
+        mm_encoder_ff_mult (int): Multiplier for the feed-forward dimension in the multimodal encoder.
+        *args: Variable length argument list.
+        **kwargs: Arbitrary keyword arguments.
+
+    Attributes:
+        patch_size (int): Size of the image patches.
+        image_size (int): Size of the input image.
+        dim (int): Dimension of the model.
+        depth (int): Depth of the model.
+        heads (int): Number of attention heads.
+        vit_depth (int): Depth of the ViT transformer.
+        multi_modal_encoder_depth (int): Depth of the multimodal encoder.
+        llm_decoder_depth (int): Depth of the LLM decoder.
+        patch_embedding (nn.Conv2d): Patch embedding layer.
+        vit (ViTransformerWrapper): ViT transformer layer.
+        image_embedding (nn.Linear): Image embedding layer.
+        to_out (nn.Sequential): Output layer.
+        flash (str): Device to use for computation.
+        encoder (MultiModalEncoder): Multimodal encoder layer.
+        decoder (MultiModalDecoder): LLM decoder layer.
+    """
+
+    def __init__(
+        self,
+        patch_size: int,
         image_size: int = 224,
         dim: int = 512,
         depth: int = 6,
+        dim_head: int = 64,
         heads: int = 8,
         vit_depth: int = 4,
         multi_modal_encoder_depth: int = 4,
@@ -231,10 +407,7 @@ class ScreenAI(nn.Module):
         self.multi_modal_encoder_depth = multi_modal_encoder_depth
         self.llm_decoder_depth = llm_decoder_depth
 
-        # Patch embedding
-        self.patch_embedding = nn.Conv2d(
-            3, dim, patch_size, patch_size
-        )
+
 
         # ViTransformerWrapper
         self.vit = ViTransformerWrapper(
@@ -254,36 +427,42 @@ class ScreenAI(nn.Module):
             nn.LayerNorm(dim), nn.Linear(dim, dim), nn.Softmax(dim=-1)
         )
 
+        # If cuda is avaialble then cuda
+        self.flash = "cuda" if torch.cuda.is_available() else "cpu"
+
         # MultiModal Encoder layers
-        self.mme_layers = nn.ModuleList([])
-        self.mme_layers.append(
-            MultiQueryAttention(dim, heads, *args, **kwargs)
-            for _ in range(multi_modal_encoder_depth)
-        )
-        self.mme_layers.append(
-            FeedForward(dim, dim, mm_encoder_ff_mult, *args, **kwargs)
+        self.encoder = MultiModalEncoder(
+            dim,
+            multi_modal_encoder_depth,
+            dim_head,
+            heads,
         )
 
         # LLM Layer / T5
-        self.llm_layers = nn.ModuleList([])
-        self.llm_layers.append(
-            CrossAttention(
-                dim, context_dim=dim, heads=heads, *args, **kwargs
-            )
-            for _ in range(llm_decoder_depth)
-        )
-        self.llm_layes.append(
-            MultiQueryAttention(dim, heads, *args, **kwargs)
-            for _ in range(llm_decoder_depth)
+        self.decoder = MultiModalDecoder(
+            dim,
+            llm_decoder_depth,
+            dim_head,
+            heads,
         )
 
     def forward(self, text: Tensor, img: Tensor) -> Tensor:
+        """
+        Forward pass of the ScreenAI module.
+
+        Args:
+            text (Tensor): Input text tensor.
+            img (Tensor): Input image tensor.
+
+        Returns:
+            Tensor: Output tensor.
+        """
         # Image patch
         img = rearrange(
             img,
             "b c (h p1) (w p2) -> b (h w) (p1 p2 c)",
-            p1=self.patch_size[0],
-            p2=self.patch_size[1],
+            p1=self.patch_size,
+            p2=self.patch_size,
         )
         print(f"Image patch shape: {img.shape}")
 
@@ -298,14 +477,10 @@ class ScreenAI(nn.Module):
         print(x.shape)
 
         # T5 Multimodal encoder
-        for attn, ff in self.mme_layers:
-            x, _, _ = attn(x, x, x) + x
-            x = ff(x) + x
+        x = self.encoder(x)
 
         # Pass the k, v values into the cross attention of llm
-        for cross_attn, attn in self.llm_layers:
-            x = cross_attn(x, x)
-            x, _, _ = attn(x, x, x)
+        x = self.decoder(x)
 
         # To out
         x = self.to_out(x)

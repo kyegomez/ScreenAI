@@ -4,12 +4,12 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "screenai"
-version = "0.0.3"
+version = "0.0.4"
 description = "Screen AI - Pytorch"
 license = "MIT"
 authors = ["Kye Gomez <kye@apac.ai>"]
 homepage = "https://github.com/kyegomez/ScreenAI"
-documentation = "https://github.com/kyegomez/ScreenAI"  # Add this if you have documentation.
+documentation = "https://github.com/kyegomez/ScreenAI" 
 readme = "README.md"  # Assuming you have a README.md
 repository = "https://github.com/kyegomez/ScreenAI"
 keywords = ["artificial intelligence", "deep learning", "optimizers", "Prompt Engineering"]
